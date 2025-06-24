@@ -1,6 +1,4 @@
 from flask import Flask, render_template, request, redirect
-import threading
-import json
 
 app = Flask(__name__, template_folder='templates')
 
@@ -13,11 +11,9 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-# 👁 Used by bot to sync with dashboard
 def get_strategy():
     return strategy
 
-# 🧠 Endpoint to view + update
 @app.route("/", methods=["GET", "POST"])
 def dashboard():
     if request.method == "POST":
@@ -30,6 +26,3 @@ def dashboard():
             pass
         return redirect("/")
     return render_template("dashboard.html", strategy=strategy)
-
-def start_dashboard():
-    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8080)).start()
