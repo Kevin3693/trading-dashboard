@@ -26,3 +26,7 @@ def dashboard():
             pass
         return redirect("/")
     return render_template("dashboard.html", strategy=strategy)
+
+# ✅ For Render deployment (DO NOT USE threading/app.run)
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8080)
