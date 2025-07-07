@@ -1,8 +1,3 @@
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-
 import os
 import threading
 import time
@@ -10,6 +5,7 @@ import requests
 from flask import Flask, render_template, request, redirect, jsonify
 
 app = Flask(__name__, template_folder='templates')
+
 # Shared strategy config
 strategy = {
     "BUY_THRESHOLD": -1.0,
@@ -78,6 +74,12 @@ def start_price_watcher():
             strategy["TRACKED_SYMBOLS"] = results
             time.sleep(10)
 
-    threading.Thread(target=run, daemon=True).start()
+    thread = threading.Thread(target=run)
+    thread.daemon = True
+    thread.start()
 
-start_price_watcher()
+# Flask entry point
+if __name__ == "__main__":
+    start_price_watcher()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
