@@ -1,12 +1,11 @@
-import os
+from flask import Flask, render_template_string, request, jsonify
+import requests
 import threading
 import time
-import requests
-from flask import Flask, render_template, request, redirect, jsonify
 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__)
 
-# Shared strategy config
+# Strategy Configuration
 strategy = {
     "BUY_THRESHOLD": -1.0,
     "SELL_THRESHOLD": 1.0,
@@ -15,26 +14,7 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-# Serve the strategy settings page
-@app.route("/", methods=["GET", "POST"])
-def dashboard():
-    if request.method == "POST":
-        try:
-            strategy["BUY_THRESHOLD"] = float(request.form["buy_threshold"])
-            strategy["SELL_THRESHOLD"] = float(request.form["sell_threshold"])
-            strategy["TAKE_PROFIT"] = float(request.form["take_profit"])
-            strategy["STOP_LOSS"] = float(request.form["stop_loss"])
-        except:
-            pass
-        return redirect("/")
-    return render_template("dashboard.html", strategy=strategy)
-
-# API endpoint for frontend to fetch live signals
-@app.route("/data")
-def data():
-    return jsonify(strategy["TRACKED_SYMBOLS"])
-
-# Fetch live price from Binance
+# Fetch current price from Binance
 def fetch_price(symbol):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     try:
@@ -46,25 +26,25 @@ def fetch_price(symbol):
         print(f"[fetch_price] Error for {symbol}: {e}")
         return None
 
-# Basic signal logic
+# Analyze price to decide signal
 def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
         return None
 
-    # Simulated percentage movement
-    change = round((price % 10 - 5) / 5 * 100, 2)
+    # Simulate a fake percentage change just for UI testing
+    change = round((price % 10 - 5) / 5 * 100, 2)  # returns between -100 to +100
 
     if change <= strategy["BUY_THRESHOLD"]:
         action = "BUY"
     elif change >= strategy["SELL_THRESHOLD"]:
         action = "SELL"
     else:
-        action = "HOLD"
+        action = "HOLD"  # ensure something is always returned
 
     return {"symbol": symbol, "price": price, "action": action}
 
-# Background signal updater
+# Background thread to check prices every 10 seconds
 def start_price_watcher():
     def run():
         print("🔄 Starting price watcher thread...")
@@ -81,8 +61,57 @@ def start_price_watcher():
 
     threading.Thread(target=run, daemon=True).start()
 
-# Start watcher and run Flask
+# HTML Template
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trading Dashboard</title>
+</head>
+<body>
+    <h2>📊 Trading Bot Strategy</h2>
+    <form method="POST">
+        <label>BUY_THRESHOLD (%):</label><br>
+        <input name="BUY_THRESHOLD" value="{{ s.BUY_THRESHOLD }}"><br>
+        <label>SELL_THRESHOLD (%):</label><br>
+        <input name="SELL_THRESHOLD" value="{{ s.SELL_THRESHOLD }}"><br>
+        <label>TAKE_PROFIT (%):</label><br>
+        <input name="TAKE_PROFIT" value="{{ s.TAKE_PROFIT }}"><br>
+        <label>STOP_LOSS (%):</label><br>
+        <input name="STOP_LOSS" value="{{ s.STOP_LOSS }}"><br><br>
+        <input type="submit" value="✅ Update Strategy">
+    </form>
+
+    <h3>📉 Live Coin Signals</h3>
+    <table border="1">
+        <tr><th>Symbol</th><th>Price</th><th>Action</th></tr>
+        {% for signal in s.TRACKED_SYMBOLS %}
+        <tr>
+            <td>{{ signal.symbol }}</td>
+            <td>{{ signal.price }}</td>
+            <td>{{ signal.action }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
+"""
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        strategy["BUY_THRESHOLD"] = float(request.form["BUY_THRESHOLD"])
+        strategy["SELL_THRESHOLD"] = float(request.form["SELL_THRESHOLD"])
+        strategy["TAKE_PROFIT"] = float(request.form["TAKE_PROFIT"])
+        strategy["STOP_LOSS"] = float(request.form["STOP_LOSS"])
+        print("[Strategy Updated]", strategy)
+
+    return render_template_string(HTML, s=strategy)
+
+@app.route("/data")
+def data():
+    return jsonify(strategy["TRACKED_SYMBOLS"])
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
     start_price_watcher()
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=10000)
