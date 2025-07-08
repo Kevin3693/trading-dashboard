@@ -6,7 +6,6 @@ from flask import Flask, render_template, request, redirect, jsonify
 
 app = Flask(__name__, template_folder='templates')
 
-# Strategy settings (default values)
 strategy = {
     "BUY_THRESHOLD": -1.0,
     "SELL_THRESHOLD": 1.0,
@@ -44,8 +43,6 @@ def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
         return None
-
-    # Simulate price change % for demonstration
     change = round((price % 10 - 5) / 5 * 100, 2)
 
     if change <= strategy["BUY_THRESHOLD"]:
@@ -57,7 +54,6 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
-# ✅ Updated with logs
 def start_price_watcher():
     def run():
         print("🔄 Starting price watcher thread...")
@@ -74,9 +70,7 @@ def start_price_watcher():
 
     threading.Thread(target=run, daemon=True).start()
 
-# Start watcher before launching the app
-start_price_watcher()
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
+    start_price_watcher()
     app.run(host="0.0.0.0", port=port)
