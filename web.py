@@ -46,7 +46,7 @@ def analyze_symbol(symbol):
     if price is None:
         return None
 
-    # Simulated change for demo
+    # Simulated percentage movement
     change = round((price % 10 - 5) / 5 * 100, 2)
 
     if change <= strategy["BUY_THRESHOLD"]:
@@ -69,11 +69,13 @@ def start_price_watcher():
                     results.append(result)
             strategy["TRACKED_SYMBOLS"] = results
             time.sleep(10)
-    threading.Thread(target=run, daemon=True).start()
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
 
+# ✅ Start watcher always — this runs on Render too
 start_price_watcher()
 
-# Required for Render deployment
+# ✅ Required only for local dev, ignored by Render
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
