@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, redirect, jsonify
 
 app = Flask(__name__, template_folder='templates')
 
-# Shared strategy config
+# Strategy settings (default values)
 strategy = {
     "BUY_THRESHOLD": -1.0,
     "SELL_THRESHOLD": 1.0,
@@ -23,7 +23,7 @@ def dashboard():
             strategy["SELL_THRESHOLD"] = float(request.form["sell_threshold"])
             strategy["TAKE_PROFIT"] = float(request.form["take_profit"])
             strategy["STOP_LOSS"] = float(request.form["stop_loss"])
-        except ValueError:
+        except:
             pass
         return redirect("/")
     return render_template("dashboard.html", strategy=strategy)
@@ -36,7 +36,6 @@ def fetch_price(symbol):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     try:
         res = requests.get(url, timeout=5)
-        res.raise_for_status()
         return float(res.json()["price"])
     except:
         return None
@@ -46,7 +45,7 @@ def analyze_symbol(symbol):
     if price is None:
         return None
 
-    # Simulated percentage movement
+    # Simulate price change % for demonstration
     change = round((price % 10 - 5) / 5 * 100, 2)
 
     if change <= strategy["BUY_THRESHOLD"]:
@@ -58,9 +57,10 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
+# ✅ Updated with logs
 def start_price_watcher():
     def run():
-         print("🔄 Starting price watcher thread...")
+        print("🔄 Starting price watcher thread...")
         symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
         while True:
             results = []
@@ -74,10 +74,9 @@ def start_price_watcher():
 
     threading.Thread(target=run, daemon=True).start()
 
-# ✅ Start watcher always — this runs on Render too
+# Start watcher before launching the app
 start_price_watcher()
 
-# ✅ Required only for local dev, ignored by Render
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
