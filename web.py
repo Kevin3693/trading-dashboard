@@ -15,7 +15,6 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-# Serve the strategy settings page
 @app.route("/", methods=["GET", "POST"])
 def dashboard():
     if request.method == "POST":
@@ -24,32 +23,30 @@ def dashboard():
             strategy["SELL_THRESHOLD"] = float(request.form["sell_threshold"])
             strategy["TAKE_PROFIT"] = float(request.form["take_profit"])
             strategy["STOP_LOSS"] = float(request.form["stop_loss"])
-        except:
+        except ValueError:
             pass
         return redirect("/")
     return render_template("dashboard.html", strategy=strategy)
 
-# API endpoint for frontend to fetch live signals
 @app.route("/data")
 def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
 
-# Binance fetch
 def fetch_price(symbol):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     try:
         res = requests.get(url, timeout=5)
+        res.raise_for_status()
         return float(res.json()["price"])
     except:
         return None
 
-# Basic logic (simulate % movement)
 def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
         return None
 
-    # Simulated percentage movement
+    # Simulated change for demo
     change = round((price % 10 - 5) / 5 * 100, 2)
 
     if change <= strategy["BUY_THRESHOLD"]:
@@ -61,7 +58,6 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
-# Background signal updater
 def start_price_watcher():
     def run():
         symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -73,13 +69,11 @@ def start_price_watcher():
                     results.append(result)
             strategy["TRACKED_SYMBOLS"] = results
             time.sleep(10)
+    threading.Thread(target=run, daemon=True).start()
 
-    thread = threading.Thread(target=run)
-    thread.daemon = True
-    thread.start()
+start_price_watcher()
 
-# Flask entry point
+# Required for Render deployment
 if __name__ == "__main__":
-    start_price_watcher()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
