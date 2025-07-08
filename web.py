@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, jsonify
 
 app = Flask(__name__, template_folder='templates')
 
+# Shared strategy config
 strategy = {
     "BUY_THRESHOLD": -1.0,
     "SELL_THRESHOLD": 1.0,
@@ -14,6 +15,7 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
+# Serve the strategy settings page
 @app.route("/", methods=["GET", "POST"])
 def dashboard():
     if request.method == "POST":
@@ -27,22 +29,30 @@ def dashboard():
         return redirect("/")
     return render_template("dashboard.html", strategy=strategy)
 
+# API endpoint for frontend to fetch live signals
 @app.route("/data")
 def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
 
+# Fetch live price from Binance
 def fetch_price(symbol):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     try:
         res = requests.get(url, timeout=5)
-        return float(res.json()["price"])
-    except:
+        price = float(res.json()["price"])
+        print(f"[fetch_price] {symbol} => {price}")
+        return price
+    except Exception as e:
+        print(f"[fetch_price] Error for {symbol}: {e}")
         return None
 
+# Basic signal logic
 def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
         return None
+
+    # Simulated percentage movement
     change = round((price % 10 - 5) / 5 * 100, 2)
 
     if change <= strategy["BUY_THRESHOLD"]:
@@ -54,6 +64,7 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
+# Background signal updater
 def start_price_watcher():
     def run():
         print("🔄 Starting price watcher thread...")
@@ -70,7 +81,8 @@ def start_price_watcher():
 
     threading.Thread(target=run, daemon=True).start()
 
+# Start watcher and run Flask
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 5000))
     start_price_watcher()
     app.run(host="0.0.0.0", port=port)
