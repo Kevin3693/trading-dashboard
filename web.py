@@ -60,17 +60,19 @@ def analyze_symbol(symbol):
 
 def start_price_watcher():
     def run():
+         print("🔄 Starting price watcher thread...")
         symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
         while True:
             results = []
             for sym in symbols:
                 result = analyze_symbol(sym)
+                print(f"[Watcher] {sym} => {result}")
                 if result:
                     results.append(result)
             strategy["TRACKED_SYMBOLS"] = results
             time.sleep(10)
-    thread = threading.Thread(target=run, daemon=True)
-    thread.start()
+
+    threading.Thread(target=run, daemon=True).start()
 
 # ✅ Start watcher always — this runs on Render too
 start_price_watcher()
