@@ -15,6 +15,7 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
+
 # Fetch current price from Binance
 def fetch_price(symbol):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
@@ -26,6 +27,7 @@ def fetch_price(symbol):
     except Exception as e:
         print(f"[fetch_price] Error for {symbol}: {e}")
         return None
+
 
 # Analyze price to decide signal
 def analyze_symbol(symbol):
@@ -44,8 +46,10 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
+
 # Background thread to check prices every 10 seconds
 def start_price_watcher():
+
     def run():
         print("🔄 Starting price watcher thread...")
         symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -60,6 +64,10 @@ def start_price_watcher():
             time.sleep(10)
 
     threading.Thread(target=run, daemon=True).start()
+
+
+# ✅ Ensure watcher starts on both Replit and Render
+start_price_watcher()
 
 # HTML Template
 HTML = """
@@ -97,6 +105,7 @@ HTML = """
 </html>
 """
 
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -108,10 +117,12 @@ def index():
 
     return render_template_string(HTML, s=strategy)
 
+
 @app.route("/data")
 def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
 
+
+# ✅ For Replit local run
 if __name__ == "__main__":
-    start_price_watcher()
     app.run(host="0.0.0.0", port=10000)
