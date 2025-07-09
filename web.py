@@ -2,6 +2,7 @@ from flask import Flask, render_template_string, request, jsonify
 import requests
 import threading
 import time
+import random
 
 app = Flask(__name__)
 
@@ -32,15 +33,14 @@ def analyze_symbol(symbol):
     if price is None:
         return None
 
-    # Simulate a fake percentage change just for UI testing
-    change = round((price % 10 - 5) / 5 * 100, 2)  # returns between -100 to +100
+    change = random.uniform(-2, 2)  # Simulated price change for now
 
     if change <= strategy["BUY_THRESHOLD"]:
         action = "BUY"
     elif change >= strategy["SELL_THRESHOLD"]:
         action = "SELL"
     else:
-        action = "HOLD"  # ensure something is always returned
+        action = "HOLD"
 
     return {"symbol": symbol, "price": price, "action": action}
 
