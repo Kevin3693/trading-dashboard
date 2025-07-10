@@ -35,7 +35,7 @@ def analyze_symbol(symbol):
     if price is None:
         return None
 
-    change = random.uniform(-2, 2)  # Simulated price change for now
+    change = random.uniform(-2, 2)  # Simulated change for demo
 
     if change <= strategy["BUY_THRESHOLD"]:
         action = "BUY"
@@ -47,27 +47,23 @@ def analyze_symbol(symbol):
     return {"symbol": symbol, "price": price, "action": action}
 
 
-# Background thread to check prices every 10 seconds
-def start_price_watcher():
+# 🔁 Background recurring price watcher (Render-safe)
+def watch_prices():
+    print("🔄 Running price check...")
+    symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+    results = []
+    for sym in symbols:
+        result = analyze_symbol(sym)
+        print(f"[Watcher] {sym} => {result}")
+        if result:
+            results.append(result)
+    strategy["TRACKED_SYMBOLS"] = results
 
-    def run():
-        print("🔄 Starting price watcher thread...")
-        symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
-        while True:
-            results = []
-            for sym in symbols:
-                result = analyze_symbol(sym)
-                print(f"[Watcher] {sym} => {result}")
-                if result:
-                    results.append(result)
-            strategy["TRACKED_SYMBOLS"] = results
-            time.sleep(10)
-
-    threading.Thread(target=run, daemon=True).start()
+    threading.Timer(10, watch_prices).start()
 
 
-# ✅ Ensure watcher starts on both Replit and Render
-start_price_watcher()
+# ✅ Start watcher immediately (Render-safe)
+watch_prices()
 
 # HTML Template
 HTML = """
@@ -123,6 +119,5 @@ def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
 
 
-# ✅ For Replit local run
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
