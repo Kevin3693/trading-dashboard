@@ -1,8 +1,5 @@
 from flask import Flask, render_template_string, request, jsonify
-import requests
-import threading
-import time
-import random
+import requests, threading, time, random
 
 app = Flask(__name__)
 
@@ -15,23 +12,18 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-# CoinGecko symbols
-symbol_map = {
-    "BTCUSDT": "bitcoin",
-    "ETHUSDT": "ethereum",
-    "BNBUSDT": "binancecoin"
-}
-
+# --- Use CoinGecko for public price data ---
 def fetch_price(symbol):
-    coin_id = symbol_map.get(symbol)
-    if not coin_id:
-        print(f"[fetch_price] Unknown symbol: {symbol}")
-        return None
-    url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+    coingecko_ids = {
+        "BTCUSDT": "bitcoin",
+        "ETHUSDT": "ethereum",
+        "BNBUSDT": "binancecoin"
+    }
     try:
+        coin_id = coingecko_ids[symbol]
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
         res = requests.get(url, timeout=5)
-        data = res.json()
-        price = data[coin_id]["usd"]
+        price = res.json()[coin_id]["usd"]
         print(f"[fetch_price] {symbol} => {price}")
         return price
     except Exception as e:
@@ -44,8 +36,8 @@ def analyze_symbol(symbol):
         print(f"[analyze_symbol] Skipping {symbol}, no price.")
         return None
 
-    change = random.uniform(-2, 2)
-    print(f"[analyze_symbol] {symbol} change: {change}")
+    change = random.uniform(-2, 2)  # simulate % change
+    print(f"[analyze_symbol] {symbol} change: {change:.2f}%")
 
     if change <= strategy["BUY_THRESHOLD"]:
         action = "BUY"
@@ -56,6 +48,7 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
+# ✅ Render-safe scheduler (no infinite thread!)
 def watch_prices():
     print("🔄 Running price check...")
     symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -66,9 +59,8 @@ def watch_prices():
         if result:
             results.append(result)
     strategy["TRACKED_SYMBOLS"] = results
-    threading.Timer(10, watch_prices).start()
 
-watch_prices()
+    threading.Timer(10, watch_prices).start()
 
 # HTML Template
 HTML = """
@@ -118,6 +110,9 @@ def index():
 @app.route("/data")
 def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
+
+# ⬅️ Start the price watcher loop
+watch_prices()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
