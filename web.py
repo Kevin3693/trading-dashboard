@@ -1,5 +1,8 @@
 from flask import Flask, render_template_string, request, jsonify
-import requests, threading, time, random
+import requests
+import threading
+import time
+import random
 
 app = Flask(__name__)
 
@@ -12,32 +15,42 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-# --- Use CoinGecko for public price data ---
+# ✅ Fixed: CoinGecko price fetch with correct mapping
 def fetch_price(symbol):
-    coingecko_ids = {
+    symbol_map = {
         "BTCUSDT": "bitcoin",
         "ETHUSDT": "ethereum",
         "BNBUSDT": "binancecoin"
     }
+    coingecko_id = symbol_map.get(symbol)
+    if not coingecko_id:
+        print(f"[fetch_price] Unknown symbol: {symbol}")
+        return None
+
+    url = f"https://api.coingecko.com/api/v3/simple/price?ids={coingecko_id}&vs_currencies=usd"
     try:
-        coin_id = coingecko_ids[symbol]
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
         res = requests.get(url, timeout=5)
-        price = res.json()[coin_id]["usd"]
-        print(f"[fetch_price] {symbol} => {price}")
-        return price
+        data = res.json()
+        if coingecko_id in data and "usd" in data[coingecko_id]:
+            price = float(data[coingecko_id]["usd"])
+            print(f"[fetch_price] {symbol} => {price}")
+            return price
+        else:
+            print(f"[fetch_price] Unexpected response for {symbol}: {data}")
+            return None
     except Exception as e:
         print(f"[fetch_price] Error for {symbol}: {e}")
         return None
 
+# Analyze price to decide signal
 def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
         print(f"[analyze_symbol] Skipping {symbol}, no price.")
         return None
 
-    change = random.uniform(-2, 2)  # simulate % change
-    print(f"[analyze_symbol] {symbol} change: {change:.2f}%")
+    change = random.uniform(-2, 2)  # Simulated price change
+    print(f"[analyze_symbol] {symbol} change: {change}")
 
     if change <= strategy["BUY_THRESHOLD"]:
         action = "BUY"
@@ -48,7 +61,7 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
-# ✅ Render-safe scheduler (no infinite thread!)
+# ✅ Timer-based watcher for Render-safe updates
 def watch_prices():
     print("🔄 Running price check...")
     symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -62,11 +75,15 @@ def watch_prices():
 
     threading.Timer(10, watch_prices).start()
 
+watch_prices()
+
 # HTML Template
 HTML = """
 <!DOCTYPE html>
 <html>
-<head><title>Trading Dashboard</title></head>
+<head>
+    <title>Trading Dashboard</title>
+</head>
 <body>
     <h2>📊 Trading Bot Strategy</h2>
     <form method="POST">
@@ -110,9 +127,6 @@ def index():
 @app.route("/data")
 def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
-
-# ⬅️ Start the price watcher loop
-watch_prices()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
