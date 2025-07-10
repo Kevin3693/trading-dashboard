@@ -6,6 +6,7 @@ import random
 
 app = Flask(__name__)
 
+# Strategy Configuration
 strategy = {
     "BUY_THRESHOLD": -1.0,
     "SELL_THRESHOLD": 1.0,
@@ -14,23 +15,24 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-
+# Fetch current price from Binance
 def fetch_price(symbol):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     try:
         res = requests.get(url, timeout=5)
         data = res.json()
-        if "price" not in data:
+        if "price" in data:
+            price = float(data["price"])
+            print(f"[fetch_price] {symbol} => {price}")
+            return price
+        else:
             print(f"[fetch_price] Unexpected response for {symbol}: {data}")
             return None
-        price = float(data["price"])
-        print(f"[fetch_price] {symbol} => {price}")
-        return price
     except Exception as e:
         print(f"[fetch_price] Error for {symbol}: {e}")
         return None
 
-
+# Analyze price to decide signal
 def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
@@ -49,7 +51,7 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
-
+# Safe recurring background task
 def watch_prices():
     print("🔄 Running price check...")
     symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -62,9 +64,9 @@ def watch_prices():
     strategy["TRACKED_SYMBOLS"] = results
     threading.Timer(10, watch_prices).start()
 
-
 watch_prices()
 
+# HTML Template
 HTML = """
 <!DOCTYPE html>
 <html>
@@ -100,7 +102,6 @@ HTML = """
 </html>
 """
 
-
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
@@ -109,13 +110,12 @@ def index():
         strategy["TAKE_PROFIT"] = float(request.form["TAKE_PROFIT"])
         strategy["STOP_LOSS"] = float(request.form["STOP_LOSS"])
         print("[Strategy Updated]", strategy)
-    return render_template_string(HTML, s=strategy)
 
+    return render_template_string(HTML, s=strategy)
 
 @app.route("/data")
 def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
