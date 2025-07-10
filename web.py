@@ -15,7 +15,7 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-# ✅ Fixed: CoinGecko price fetch with correct mapping
+# Fetch price from CoinGecko
 def fetch_price(symbol):
     symbol_map = {
         "BTCUSDT": "bitcoin",
@@ -31,12 +31,14 @@ def fetch_price(symbol):
     try:
         res = requests.get(url, timeout=5)
         data = res.json()
-        if coingecko_id in data and "usd" in data[coingecko_id]:
-            price = float(data[coingecko_id]["usd"])
+        print(f"[fetch_price] API raw response for {symbol}: {data}")
+        coin_data = data.get(coingecko_id, {})
+        price = coin_data.get("usd")
+        if price is not None:
             print(f"[fetch_price] {symbol} => {price}")
-            return price
+            return float(price)
         else:
-            print(f"[fetch_price] Unexpected response for {symbol}: {data}")
+            print(f"[fetch_price] No 'usd' key for {symbol}")
             return None
     except Exception as e:
         print(f"[fetch_price] Error for {symbol}: {e}")
@@ -49,7 +51,7 @@ def analyze_symbol(symbol):
         print(f"[analyze_symbol] Skipping {symbol}, no price.")
         return None
 
-    change = random.uniform(-2, 2)  # Simulated price change
+    change = random.uniform(-2, 2)
     print(f"[analyze_symbol] {symbol} change: {change}")
 
     if change <= strategy["BUY_THRESHOLD"]:
@@ -61,7 +63,7 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
-# ✅ Timer-based watcher for Render-safe updates
+# Periodically update tracked prices
 def watch_prices():
     print("🔄 Running price check...")
     symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -72,10 +74,7 @@ def watch_prices():
         if result:
             results.append(result)
     strategy["TRACKED_SYMBOLS"] = results
-
     threading.Timer(10, watch_prices).start()
-
-watch_prices()
 
 # HTML Template
 HTML = """
@@ -129,4 +128,5 @@ def data():
     return jsonify(strategy["TRACKED_SYMBOLS"])
 
 if __name__ == "__main__":
+    watch_prices()
     app.run(host="0.0.0.0", port=10000)
