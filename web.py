@@ -6,7 +6,6 @@ import random
 
 app = Flask(__name__)
 
-# Strategy Configuration
 strategy = {
     "BUY_THRESHOLD": -1.0,
     "SELL_THRESHOLD": 1.0,
@@ -16,12 +15,15 @@ strategy = {
 }
 
 
-# Fetch current price from Binance
 def fetch_price(symbol):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     try:
         res = requests.get(url, timeout=5)
-        price = float(res.json()["price"])
+        data = res.json()
+        if "price" not in data:
+            print(f"[fetch_price] Unexpected response for {symbol}: {data}")
+            return None
+        price = float(data["price"])
         print(f"[fetch_price] {symbol} => {price}")
         return price
     except Exception as e:
@@ -29,13 +31,14 @@ def fetch_price(symbol):
         return None
 
 
-# Analyze price to decide signal
 def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
+        print(f"[analyze_symbol] Skipping {symbol}, no price.")
         return None
 
-    change = random.uniform(-2, 2)  # Simulated change for demo
+    change = random.uniform(-2, 2)
+    print(f"[analyze_symbol] {symbol} change: {change}")
 
     if change <= strategy["BUY_THRESHOLD"]:
         action = "BUY"
@@ -47,7 +50,6 @@ def analyze_symbol(symbol):
     return {"symbol": symbol, "price": price, "action": action}
 
 
-# 🔁 Background recurring price watcher (Render-safe)
 def watch_prices():
     print("🔄 Running price check...")
     symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -58,14 +60,11 @@ def watch_prices():
         if result:
             results.append(result)
     strategy["TRACKED_SYMBOLS"] = results
-
     threading.Timer(10, watch_prices).start()
 
 
-# ✅ Start watcher immediately (Render-safe)
 watch_prices()
 
-# HTML Template
 HTML = """
 <!DOCTYPE html>
 <html>
@@ -110,7 +109,6 @@ def index():
         strategy["TAKE_PROFIT"] = float(request.form["TAKE_PROFIT"])
         strategy["STOP_LOSS"] = float(request.form["STOP_LOSS"])
         print("[Strategy Updated]", strategy)
-
     return render_template_string(HTML, s=strategy)
 
 
