@@ -15,24 +15,29 @@ strategy = {
     "TRACKED_SYMBOLS": []
 }
 
-# Fetch current price from Binance
+# CoinGecko symbols
+symbol_map = {
+    "BTCUSDT": "bitcoin",
+    "ETHUSDT": "ethereum",
+    "BNBUSDT": "binancecoin"
+}
+
 def fetch_price(symbol):
-    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+    coin_id = symbol_map.get(symbol)
+    if not coin_id:
+        print(f"[fetch_price] Unknown symbol: {symbol}")
+        return None
+    url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
     try:
         res = requests.get(url, timeout=5)
         data = res.json()
-        if "price" in data:
-            price = float(data["price"])
-            print(f"[fetch_price] {symbol} => {price}")
-            return price
-        else:
-            print(f"[fetch_price] Unexpected response for {symbol}: {data}")
-            return None
+        price = data[coin_id]["usd"]
+        print(f"[fetch_price] {symbol} => {price}")
+        return price
     except Exception as e:
         print(f"[fetch_price] Error for {symbol}: {e}")
         return None
 
-# Analyze price to decide signal
 def analyze_symbol(symbol):
     price = fetch_price(symbol)
     if price is None:
@@ -51,7 +56,6 @@ def analyze_symbol(symbol):
 
     return {"symbol": symbol, "price": price, "action": action}
 
-# Safe recurring background task
 def watch_prices():
     print("🔄 Running price check...")
     symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
@@ -70,9 +74,7 @@ watch_prices()
 HTML = """
 <!DOCTYPE html>
 <html>
-<head>
-    <title>Trading Dashboard</title>
-</head>
+<head><title>Trading Dashboard</title></head>
 <body>
     <h2>📊 Trading Bot Strategy</h2>
     <form method="POST">
